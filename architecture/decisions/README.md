@@ -18,6 +18,7 @@ Agents must not implement a decision whose ADR is still **Proposed** without hum
 | [0009](ADR-0009-cms-auth-rbac-audit.md) | CMS authentication, permission-based RBAC, audit log | **Proposed** |
 | [0010](ADR-0010-integrations-secrets-tracking.md) | Integrations, secret configuration, tracking architecture | **Proposed** |
 | [0011](ADR-0011-backend-app-additions.md) | Backend app additions (`audit, content, promotions, integrations, analytics`) | **Proposed** |
+| [0012](ADR-0012-cart-and-wishlist.md) | Customer cart & wishlist: dynamic pricing, stock validation, ownership, identifiers | **Proposed** (implemented in Step 5) |
 
 ## Template
 ```markdown

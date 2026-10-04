@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Lumera API
-  version: 0.2.0-draft
+  version: 0.3.0-draft
   description: |
     Contract structure (TASK-001 + CMS amendment). Only shared building blocks and
     the health endpoint are defined; business endpoints are added per feature task,
@@ -167,6 +167,190 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Cart (ADR-0012, BR-07, BR-09, BR-10) ---------------------------------
+  # Singleton per authenticated customer; ownership is derived from the access
+  # token only. Prices/totals are recalculated from current Product data on
+  # every read (no price snapshot until order placement, BR-03/BR-10).
+  /customer/cart/:
+    get:
+      tags: [customer]
+      summary: Retrieve the authenticated customer's cart with authoritative totals
+      operationId: getCustomerCart
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current cart (empty cart if the customer has no items)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [customer]
+      summary: Clear (remove all items from) the authenticated customer's cart
+      operationId: clearCustomerCart
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Cart cleared (idempotent; also returned when already empty)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /customer/cart/items/:
+    post:
+      tags: [customer]
+      summary: Add a product to the cart (merges with an existing line)
+      description: |
+        If the product is already in the cart, the requested quantity is ADDED to
+        the existing quantity and the resulting total is validated (one line per
+        product; DB-unique (cart, product)). Only storefront-eligible products
+        (BR-04) can be added; others are reported as 404. Any client-supplied
+        price/total fields are ignored.
+      operationId: addCustomerCartItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemCreateRequest"
+      responses:
+        "201":
+          description: New cart line created; full updated cart returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+        "200":
+          description: Existing cart line incremented; full updated cart returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Resulting quantity exceeds available stock (code `insufficient_stock`)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /customer/cart/items/{product_id}/:
+    parameters:
+      - $ref: "#/components/parameters/ProductPublicId"
+    patch:
+      tags: [customer]
+      summary: Set the quantity of a cart line
+      operationId: updateCustomerCartItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemUpdateRequest"
+      responses:
+        "200":
+          description: Quantity updated; full updated cart returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Product is not in the authenticated customer's cart (code `not_found`)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: |
+            `insufficient_stock` — quantity exceeds available stock;
+            `product_unavailable` — product is no longer storefront-eligible (remove it instead).
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    delete:
+      tags: [customer]
+      summary: Remove a product line from the cart
+      operationId: removeCustomerCartItem
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Line removed (idempotent; also returned when the product is not in the cart)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Wishlist (ADR-0012) --------------------------------------------------
+  # Saved products only: no stock reservation, no price lock, no order effect.
+  /customer/wishlist/:
+    get:
+      tags: [customer]
+      summary: Retrieve the authenticated customer's wishlist
+      operationId: getCustomerWishlist
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current wishlist (empty if none)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wishlist"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /customer/wishlist/items/:
+    post:
+      tags: [customer]
+      summary: Add a product to the wishlist
+      operationId: addCustomerWishlistItem
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WishlistItemCreateRequest"
+      responses:
+        "201":
+          description: Product saved; full updated wishlist returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wishlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Product is already in the wishlist (code `conflict`); wishlist unchanged
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /customer/wishlist/items/{product_id}/:
+    parameters:
+      - $ref: "#/components/parameters/ProductPublicId"
+    delete:
+      tags: [customer]
+      summary: Remove a product from the wishlist
+      operationId: removeCustomerWishlistItem
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Removed (idempotent; also returned when the product is not in the wishlist)
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -704,6 +888,12 @@ components:
       name: search
       in: query
       schema: { type: string }
+    ProductPublicId:
+      name: product_id
+      in: path
+      required: true
+      description: Product `public_id` (UUID). A malformed value yields the canonical JSON 404.
+      schema: { type: string, format: uuid }
     IfMatch:
       name: If-Match
       in: header
@@ -722,7 +912,7 @@ components:
             code:
               type: string
               description: Stable machine-readable code.
-              examples: [validation_error, not_authenticated, permission_denied, not_found, conflict, insufficient_stock, invalid_state_transition, throttled]
+              examples: [validation_error, not_authenticated, permission_denied, not_found, conflict, insufficient_stock, product_unavailable, invalid_state_transition, throttled]
             message:
               type: string
             details:
@@ -967,6 +1157,123 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/ProductDetail"
+
+    # --- Cart & Wishlist (ADR-0012) ---------------------------------------
+    CartProduct:
+      type: object
+      description: Current product data as seen by the customer (not a snapshot).
+      required: [public_id, name, slug, price, effective_price, stock_quantity, is_in_stock]
+      properties:
+        public_id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        primary_image: { type: [string, "null"] }
+        price: { $ref: "#/components/schemas/Money" }
+        discount_price: { type: [string, "null"] }
+        effective_price: { $ref: "#/components/schemas/Money" }
+        stock_quantity: { type: integer }
+        is_in_stock: { type: boolean }
+
+    CartAvailabilityStatus:
+      type: string
+      description: |
+        Backend-computed line status:
+        `available` — purchasable at the requested quantity;
+        `insufficient_stock` — in stock but less than the requested quantity;
+        `out_of_stock` — stock is 0;
+        `unavailable` — product no longer storefront-eligible (draft/archived/hidden/inactive category).
+      enum: [available, insufficient_stock, out_of_stock, unavailable]
+
+    CartItem:
+      type: object
+      required: [product, quantity, unit_price, line_total, availability_status, is_purchasable]
+      properties:
+        product: { $ref: "#/components/schemas/CartProduct" }
+        quantity: { type: integer, minimum: 1 }
+        unit_price:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: Current authoritative effective price (BR-02a, BR-10).
+        line_total:
+          allOf: [{ $ref: "#/components/schemas/Money" }]
+          description: unit_price × quantity, Decimal arithmetic, 2 fraction digits.
+        availability_status: { $ref: "#/components/schemas/CartAvailabilityStatus" }
+        is_purchasable:
+          type: boolean
+          description: true only when availability_status is `available`.
+        added_at: { type: string, format: date-time }
+
+    CartSummary:
+      type: object
+      description: |
+        Authoritative totals. `subtotal` sums `line_total` of purchasable lines only.
+        `total` equals `subtotal` until shipping/tax/discounts are introduced
+        (checkout slice). `item_count` is the sum of quantities of all lines.
+      required: [item_count, subtotal, total, currency, has_unavailable_items]
+      properties:
+        item_count: { type: integer, minimum: 0 }
+        subtotal: { $ref: "#/components/schemas/Money" }
+        total: { $ref: "#/components/schemas/Money" }
+        currency: { type: string, examples: [USD] }
+        has_unavailable_items: { type: boolean }
+
+    Cart:
+      allOf:
+        - $ref: "#/components/schemas/CartSummary"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/CartItem" }
+            updated_at: { type: [string, "null"], format: date-time }
+
+    CartItemCreateRequest:
+      type: object
+      required: [product_id]
+      description: Ownership comes from the access token; any owner/price/total fields are ignored.
+      properties:
+        product_id: { type: string, format: uuid, description: Product public_id }
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 1
+          description: Quantity to ADD. Resulting line quantity must be ≤ 20 (BR-09) and ≤ stock.
+
+    CartItemUpdateRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: New absolute line quantity (≤ 20 and ≤ stock). Use DELETE to remove.
+
+    WishlistItem:
+      type: object
+      required: [product, is_available]
+      properties:
+        product: { $ref: "#/components/schemas/CartProduct" }
+        is_available:
+          type: boolean
+          description: Product is storefront-eligible and in stock (can be added to cart now).
+        added_at: { type: string, format: date-time }
+
+    Wishlist:
+      type: object
+      required: [items, item_count]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/WishlistItem" }
+        item_count: { type: integer, minimum: 0 }
+
+    WishlistItemCreateRequest:
+      type: object
+      required: [product_id]
+      properties:
+        product_id: { type: string, format: uuid, description: Product public_id }
 
   responses:
     BadRequest:

@@ -26,7 +26,7 @@ Normative conventions for all endpoints. The machine-readable contract is [api-c
 - Resource ids: `/storefront/products/{slug}/`, `/customer/orders/{public_id}/`, `/admin/orders/{public_id}/` (see ADR-0004).
 - Nested only one level to express ownership: `/storefront/products/{slug}/reviews/`.
 - Non-CRUD actions are verbs as sub-resources with POST: `/customer/orders/{id}/cancel/`, `/admin/orders/{id}/status/`.
-- Current-user resources: `/customer/me/`, `/customer/me/addresses/`, `/customer/cart/` (singleton per user).
+- Current-user resources: `/customer/me/`, `/customer/me/addresses/`, `/customer/cart/`, `/customer/wishlist/` (singletons per user). Their lines are addressed by product `public_id`: `/customer/cart/items/{product_id}/` ([ADR-0012](decisions/ADR-0012-cart-and-wishlist.md)).
 - Admin permission per endpoint is documented in the contract (`x-required-permission`, e.g. `orders.update`).
 
 ## Methods
@@ -67,7 +67,7 @@ All non-2xx responses (including DRF defaults, via a custom exception handler in
   }
 }
 ```
-- `code`: stable machine-readable snake_case (`validation_error`, `authentication_failed`, `not_authenticated`, `permission_denied`, `not_found`, `conflict`, `insufficient_stock`, `invalid_state_transition`, `throttled`, `server_error`). Frontend branches on `code`, never on `message`.
+- `code`: stable machine-readable snake_case (`validation_error`, `authentication_failed`, `not_authenticated`, `permission_denied`, `not_found`, `conflict`, `insufficient_stock`, `product_unavailable`, `invalid_state_transition`, `throttled`, `server_error`). Frontend branches on `code`, never on `message`.
 - `message`: human-readable, safe to display, no internals.
 - `details`: optional; field errors as `{field: [messages]}`, non-field errors under `non_field_errors`.
 

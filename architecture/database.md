@@ -28,6 +28,9 @@ erDiagram
   Product ||--o{ OrderItem : "snapshot of"
   Product ||--o{ Review : receives
   Cart ||--o{ CartItem : contains
+  User ||--o| Wishlist : owns
+  Wishlist ||--o{ WishlistItem : contains
+  Product ||--o{ WishlistItem : "saved in"
   Order ||--|{ OrderItem : contains
   Order ||--o{ Payment : "paid by"
   Order ||--o{ OrderStatusHistory : tracks
@@ -46,8 +49,10 @@ erDiagram
 | **Category** (`categories`) | name, slug, description, image, status (`draft/active/archived`), sort_order, SEO title/description | Unique slug. **Flat** (no parent/child) until a requirement justifies hierarchy (then an ADR + migration) |
 | **Product** (`products`) | name, slug, sku, description, price, discount_price (nullable), stock_quantity, category (PROTECT), status (`draft/active/archived`), is_visible, is_featured, sort_order, SEO title/description, metadata (small JSON, only if a requirement appears) | Unique slug & sku; `CHECK price >= 0`, `CHECK stock_quantity >= 0`, `CHECK discount_price IS NULL OR (discount_price >= 0 AND discount_price < price)`. Effective price computed by backend. Attributes/variants: not designed until required |
 | **ProductImage** (`products`) | product, image, alt_text, sort_order, is_primary | One primary per product (partial unique index) |
-| **Cart** (`cart`) | user (one-to-one) | Logged-in users only (guest cart: open question) |
-| **CartItem** (`cart`) | cart, product, quantity | Unique (cart, product); `CHECK quantity > 0` |
+| **Cart** (`cart`) | user (one-to-one, CASCADE) | Logged-in users only (guest cart: open question). Implicit singleton, no client-visible id ([ADR-0012](decisions/ADR-0012-cart-and-wishlist.md)) |
+| **CartItem** (`cart`) | cart (CASCADE), product (CASCADE), quantity | Unique (cart, product); `CHECK quantity > 0`. **No price snapshot**: unit price/line total/subtotal are recomputed from Product on every read (BR-10); snapshot happens in OrderItem (BR-03) |
+| **Wishlist** (`cart`) | user (one-to-one, CASCADE) | Implicit singleton per customer (ADR-0012) |
+| **WishlistItem** (`cart`) | wishlist (CASCADE), product (CASCADE) | Unique (wishlist, product). No stock/price reservation |
 | **Order** (`orders`) | public_id, user (PROTECT), status, subtotal, discount_total, coupon snapshot, shipping_total, total, currency, shipping address snapshot fields, placed_at | Totals computed server-side; address copied at placement. `status` = fulfillment lifecycle (BR-12); payment state lives on Payment |
 | **OrderItem** (`orders`) | order, product (PROTECT), product_name, sku, unit_price (effective at purchase), list_price, quantity, line_total | Price/name snapshot; `CHECK quantity > 0` |
 | **OrderStatusHistory** (`orders`) | order, from_status, to_status, changed_by (nullable user), changed_at, reason | Append-only; written by the status service (customer-visible timeline + ops history) |
@@ -68,4 +73,4 @@ erDiagram
 Dashboard/analytics: computed by `analytics` selectors from existing tables (no dedicated tables initially; materialized/aggregate tables only with evidence).
 
 ## Not Yet Designed (intentionally)
-Wishlists, shipping rate tables, tax, product variants/attributes, inventory movements ledger, multi-warehouse, category hierarchy. Added only when requirements exist.
+Shipping rate tables, tax, product variants/attributes, inventory movements ledger, multi-warehouse, category hierarchy. Added only when requirements exist.

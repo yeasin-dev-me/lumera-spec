@@ -21,6 +21,12 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 ## Cart
 - BR-09 A customer has at most one active cart. Cart quantities must be positive integers **(max per line: assumed 20)**.
 - BR-10 Cart displays current prices; the price is only locked when an order is placed.
+- BR-10a Adding a product already in the cart adds to the existing line quantity; the resulting quantity is validated against BR-09 and current stock (`409 insufficient_stock`). One line per product. ([ADR-0012](architecture/decisions/ADR-0012-cart-and-wishlist.md))
+- BR-10b Only BR-04-eligible products can be newly added to cart or wishlist. Lines whose product later becomes ineligible or short on stock stay visible with a backend-computed availability status and are excluded from the subtotal; their quantity cannot be increased (`409 product_unavailable`) but they can always be removed.
+- BR-10c Cart and wishlist ownership is derived from the authenticated session only; no client-supplied owner identifier is accepted.
+
+## Wishlist
+- BR-10d A product appears at most once per customer's wishlist (duplicate add → `409 conflict`). A wishlist does not reserve stock, lock prices, or create orders.
 
 ## Orders
 - BR-11 Orders are created only by the backend from the server-side cart, never from client-supplied line prices.
