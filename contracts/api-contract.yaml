@@ -1,0 +1,199 @@
+openapi: 3.1.0
+info:
+  title: Lumera API
+  version: 0.2.0-draft
+  description: |
+    Contract structure (TASK-001 + CMS amendment). Only shared building blocks and
+    the health endpoint are defined; business endpoints are added per feature task,
+    contract-first. Conventions: architecture/api-architecture.md.
+
+    Namespaces (ADR-0008, Proposed):
+      /storefront/  public, read-mostly
+      /auth/        customer authentication
+      /customer/    authenticated customer, own data only
+      /admin/       CMS operations; per-operation permission (x-required-permission)
+      /internal/    machine callers (payment webhooks); not browser-facing
+      /health/      monitoring
+    Django Admin is NOT used; the custom Next.js CMS consumes /admin/.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Development
+  - url: https://staging.example.invalid/api/v1
+    description: Staging (placeholder host)
+  - url: https://example.invalid/api/v1
+    description: Production (placeholder host)
+tags:
+  - name: system
+  - name: storefront
+    description: Public catalog, content, public config, tracking intake
+  - name: auth
+    description: Customer registration, login, refresh, logout
+  - name: customer
+    description: Authenticated customer APIs (own data only)
+  - name: admin
+    description: CMS APIs. Every operation declares x-required-permission.
+  - name: admin-auth
+    description: CMS login/refresh/logout/me (audience cms)
+  - name: internal
+    description: Webhooks and service-to-service callers
+
+paths:
+  /health/:
+    get:
+      tags: [system]
+      summary: Liveness/readiness check
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "503":
+          description: Service unavailable (e.g. database unreachable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Planned (NOT yet specified). Each is added in its feature task BEFORE implementation,
+  # as a vertical slice (backend + storefront + CMS + integration tests):
+  #
+  #   /storefront/  products/ products/{slug}/ categories/ products/{slug}/reviews/
+  #                 content/home/ content/pages/{slug}/ config/  tracking/events/
+  #   /auth/        register/ login/ refresh/ logout/
+  #   /customer/    me/ me/addresses/ cart/ cart/items/ checkout/ orders/ orders/{public_id}/
+  #   /admin/auth/  login/ refresh/ logout/ me/   (me returns permissions: advisory only)
+  #   /admin/       products/ categories/ orders/{public_id}/ orders/{public_id}/status/
+  #                 orders/{public_id}/notes/ customers/ content/ promotions/
+  #                 integrations/ (secrets write-only) settings/ staff/ roles/
+  #                 audit-logs/ dashboard/summary/ ...
+  #   /internal/    payments/webhook/{provider}/   (blocked on ADR-0005)
+  #
+  # Admin operation example (illustrative, not active):
+  #   get: { tags: [admin], security: [{cmsBearerAuth: []}], x-required-permission: orders.read }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Customer access token (audience storefront). Proposed in ADR-0003 (pending approval).
+    cmsBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: CMS access token (audience cms). Accepted only under /admin/. Proposed in ADR-0009 (pending approval). Authorization is by permission, resolved server-side.
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Signature
+      description: Provider-specific signature verification for /internal/ webhooks (details per provider, ADR-0005).
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Ordering:
+      name: ordering
+      in: query
+      description: Field name; prefix with `-` for descending. Allowed fields are defined per endpoint.
+      schema: { type: string }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+    IfMatch:
+      name: If-Match
+      in: header
+      description: Optimistic concurrency token (ETag / updated_at) for admin updates; stale value yields 409 conflict.
+      schema: { type: string }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable machine-readable code.
+              examples: [validation_error, not_authenticated, permission_denied, not_found, conflict, insufficient_stock, invalid_state_transition, throttled]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+    PaginatedBase:
+      type: object
+      required: [count, next, previous, results]
+      properties:
+        count: { type: integer }
+        next: { type: [string, "null"], format: uri }
+        previous: { type: [string, "null"], format: uri }
+        results: { type: array, items: {} }
+    Money:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+      description: Decimal amount as string, 2 fraction digits.
+      examples: ["19.90"]
+    SecretFieldStatus:
+      type: object
+      description: Representation of a secret configuration value in ANY response. The value is never returned.
+      required: [is_set]
+      properties:
+        is_set: { type: boolean }
+        updated_at: { type: [string, "null"], format: date-time }
+    PermissionList:
+      type: array
+      description: Permission codes (resource.action), e.g. products.write. Advisory for UI gating; the backend re-checks every request.
+      items: { type: string, pattern: '^[a-z_]+\.[a-z_]+$' }
+    TrackingEvent:
+      type: object
+      description: Provider-neutral tracking event (ADR-0010). Client-sent events are non-authoritative.
+      required: [event_id, event_name]
+      properties:
+        event_id: { type: string, format: uuid, description: Used for browser/server deduplication }
+        event_name:
+          type: string
+          enum: [view_content, view_category, search, add_to_cart, remove_from_cart, initiate_checkout, add_payment_info, sign_up]
+        occurred_at: { type: string, format: date-time }
+        payload: { type: object, additionalProperties: true }
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: Authentication required or invalid
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: Permission denied
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Resource not found
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: State conflict (insufficient stock, invalid transition, stale update)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+security:
+  - bearerAuth: []

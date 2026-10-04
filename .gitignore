@@ -1,0 +1,11 @@
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Local notes / scratch
+scratch/
+*.local.md

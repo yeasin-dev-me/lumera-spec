@@ -1,0 +1,20 @@
+name: Lumera Spec CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-spec:
+    name: Validate Spec & Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate OpenAPI Contract
+        run: |
+          # Verify YAML syntax using python pyyaml
+          python3 -c "import yaml; yaml.safe_load(open('contracts/api-contract.yaml'))"
+          echo "OpenAPI contract YAML syntax is valid."
