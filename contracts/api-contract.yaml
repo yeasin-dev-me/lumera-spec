@@ -63,22 +63,610 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  # Planned (NOT yet specified). Each is added in its feature task BEFORE implementation,
-  # as a vertical slice (backend + storefront + CMS + integration tests):
-  #
-  #   /storefront/  products/ products/{slug}/ categories/ products/{slug}/reviews/
-  #                 content/home/ content/pages/{slug}/ config/  tracking/events/
-  #   /auth/        register/ login/ refresh/ logout/
-  #   /customer/    me/ me/addresses/ cart/ cart/items/ checkout/ orders/ orders/{public_id}/
-  #   /admin/auth/  login/ refresh/ logout/ me/   (me returns permissions: advisory only)
-  #   /admin/       products/ categories/ orders/{public_id}/ orders/{public_id}/status/
-  #                 orders/{public_id}/notes/ customers/ content/ promotions/
-  #                 integrations/ (secrets write-only) settings/ staff/ roles/
-  #                 audit-logs/ dashboard/summary/ ...
-  #   /internal/    payments/webhook/{provider}/   (blocked on ADR-0005)
-  #
-  # Admin operation example (illustrative, not active):
-  #   get: { tags: [admin], security: [{cmsBearerAuth: []}], x-required-permission: orders.read }
+  /auth/register/:
+    post:
+      tags: [auth]
+      summary: Register a new customer account
+      operationId: registerCustomer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/login/:
+    post:
+      tags: [auth]
+      summary: Customer login
+      operationId: loginCustomer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh/:
+    post:
+      tags: [auth]
+      summary: Refresh JWT access token
+      operationId: refreshCustomerToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenRefreshResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout/:
+    post:
+      tags: [auth]
+      summary: Invalidate refresh token and logout
+      operationId: logoutCustomer
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+
+  /customer/me/:
+    get:
+      tags: [customer]
+      summary: Current authenticated customer profile
+      operationId: getCustomerMe
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/auth/login/:
+    post:
+      tags: [admin-auth]
+      summary: Staff CMS login
+      operationId: loginStaff
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Staff login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/auth/refresh/:
+    post:
+      tags: [admin-auth]
+      summary: Refresh CMS staff JWT access token
+      operationId: refreshStaffToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenRefreshResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/auth/logout/:
+    post:
+      tags: [admin-auth]
+      summary: Invalidate staff refresh token
+      operationId: logoutStaff
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+
+  /admin/auth/me/:
+    get:
+      tags: [admin-auth]
+      summary: Current staff profile and permissions
+      operationId: getStaffMe
+      security:
+        - cmsBearerAuth: []
+      responses:
+        "200":
+          description: Staff profile and advisory permissions list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /storefront/categories/:
+    get:
+      tags: [storefront]
+      summary: List all active categories
+      operationId: getStorefrontCategories
+      security: []
+      responses:
+        "200":
+          description: List of active categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /storefront/categories/{slug}/:
+    get:
+      tags: [storefront]
+      summary: Retrieve an active category by slug
+      operationId: getStorefrontCategory
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Active category detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /storefront/products/:
+    get:
+      tags: [storefront]
+      summary: List active, visible products
+      operationId: getStorefrontProducts
+      security: []
+      parameters:
+        - name: category
+          in: query
+          description: Filter by category slug
+          schema: { type: string }
+        - name: ordering
+          in: query
+          description: Ordering (e.g. price, -price, created_at, -created_at)
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated active products list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProductList"
+
+  /storefront/products/{slug}/:
+    get:
+      tags: [storefront]
+      summary: Retrieve an active, visible product by slug
+      operationId: getStorefrontProduct
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Active product detail with images
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/categories/:
+    get:
+      tags: [admin]
+      summary: List all categories for CMS management
+      operationId: getAdminCategories
+      security:
+        - cmsBearerAuth: []
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [admin]
+      summary: Create a category
+      operationId: createAdminCategory
+      security:
+        - cmsBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreateUpdateRequest"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/categories/{id}/:
+    get:
+      tags: [admin]
+      summary: Get category detail by ID or slug
+      operationId: getAdminCategory
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Category detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [admin]
+      summary: Full update of category
+      operationId: updateAdminCategory
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreateUpdateRequest"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [admin]
+      summary: Partial update of category
+      operationId: patchAdminCategory
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreateUpdateRequest"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [admin]
+      summary: Archive or delete category
+      operationId: deleteAdminCategory
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Category deleted/archived
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/products/:
+    get:
+      tags: [admin]
+      summary: List all products for CMS management
+      operationId: getAdminProducts
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: category_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, active, archived] }
+        - name: search
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated admin product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAdminProductList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [admin]
+      summary: Create a product
+      operationId: createAdminProduct
+      security:
+        - cmsBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreateUpdateRequest"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/products/{id}/:
+    get:
+      tags: [admin]
+      summary: Get product details by ID or slug
+      operationId: getAdminProduct
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [admin]
+      summary: Full update of product
+      operationId: updateAdminProduct
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreateUpdateRequest"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [admin]
+      summary: Partial update of product
+      operationId: patchAdminProduct
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreateUpdateRequest"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [admin]
+      summary: Archive or delete product
+      operationId: deleteAdminProduct
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Product deleted/archived
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
   securitySchemes:
@@ -166,6 +754,81 @@ components:
       type: array
       description: Permission codes (resource.action), e.g. products.write. Advisory for UI gating; the backend re-checks every request.
       items: { type: string, pattern: '^[a-z_]+\.[a-z_]+$' }
+    User:
+      type: object
+      required: [id, email, is_active, is_staff]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        first_name: { type: string }
+        last_name: { type: string }
+        phone: { type: string }
+        is_active: { type: boolean }
+        is_staff: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    StaffUser:
+      type: object
+      required: [id, email, is_staff, permissions]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        first_name: { type: string }
+        last_name: { type: string }
+        is_staff: { type: boolean }
+        permissions: { $ref: "#/components/schemas/PermissionList" }
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 10 }
+        first_name: { type: string }
+        last_name: { type: string }
+        phone: { type: string }
+
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [access, refresh, user]
+      properties:
+        access: { type: string }
+        refresh: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+
+    StaffAuthResponse:
+      type: object
+      required: [access, refresh, user]
+      properties:
+        access: { type: string }
+        refresh: { type: string }
+        user: { $ref: "#/components/schemas/StaffUser" }
+
+    TokenRefreshRequest:
+      type: object
+      required: [refresh]
+      properties:
+        refresh: { type: string }
+
+    TokenRefreshResponse:
+      type: object
+      required: [access]
+      properties:
+        access: { type: string }
+        refresh: { type: string }
+
+    LogoutRequest:
+      type: object
+      properties:
+        refresh: { type: string }
+
     TrackingEvent:
       type: object
       description: Provider-neutral tracking event (ADR-0010). Client-sent events are non-authoritative.
@@ -175,8 +838,135 @@ components:
         event_name:
           type: string
           enum: [view_content, view_category, search, add_to_cart, remove_from_cart, initiate_checkout, add_payment_info, sign_up]
-        occurred_at: { type: string, format: date-time }
-        payload: { type: object, additionalProperties: true }
+    Category:
+      type: object
+      required: [id, name, slug, status]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        image_url: { type: string }
+        status: { type: string, enum: [draft, active, archived] }
+        sort_order: { type: integer }
+        seo_title: { type: string }
+        seo_description: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CategoryCreateUpdateRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        image_url: { type: string }
+        status: { type: string, enum: [draft, active, archived], default: active }
+        sort_order: { type: integer, default: 0 }
+        seo_title: { type: string }
+        seo_description: { type: string }
+
+    ProductImage:
+      type: object
+      required: [id, image_url, is_primary]
+      properties:
+        id: { type: integer }
+        image_url: { type: string }
+        alt_text: { type: string }
+        sort_order: { type: integer }
+        is_primary: { type: boolean }
+
+    ProductListItem:
+      type: object
+      required: [id, public_id, name, slug, sku, category, price, effective_price, stock_quantity, is_in_stock, status, is_visible]
+      properties:
+        id: { type: integer }
+        public_id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        sku: { type: string }
+        category:
+          type: object
+          required: [id, name, slug]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            slug: { type: string }
+        price: { $ref: "#/components/schemas/Money" }
+        discount_price: { type: [string, "null"] }
+        effective_price: { $ref: "#/components/schemas/Money" }
+        stock_quantity: { type: integer }
+        is_in_stock: { type: boolean }
+        status: { type: string, enum: [draft, active, archived] }
+        is_visible: { type: boolean }
+        is_featured: { type: boolean }
+        sort_order: { type: integer }
+        primary_image: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/ProductListItem"
+        - type: object
+          properties:
+            description: { type: string }
+            seo_title: { type: string }
+            seo_description: { type: string }
+            images:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProductImage"
+            updated_at: { type: string, format: date-time }
+
+    ProductCreateUpdateRequest:
+      type: object
+      required: [name, slug, sku, category_id, price]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        sku: { type: string }
+        category_id: { type: integer }
+        description: { type: string }
+        price: { $ref: "#/components/schemas/Money" }
+        discount_price: { type: [string, "null"] }
+        stock_quantity: { type: integer, minimum: 0, default: 0 }
+        status: { type: string, enum: [draft, active, archived], default: draft }
+        is_visible: { type: boolean, default: true }
+        is_featured: { type: boolean, default: false }
+        sort_order: { type: integer, default: 0 }
+        seo_title: { type: string }
+        seo_description: { type: string }
+        images:
+          type: array
+          items:
+            type: object
+            required: [image_url]
+            properties:
+              image_url: { type: string }
+              alt_text: { type: string }
+              sort_order: { type: integer }
+              is_primary: { type: boolean }
+
+    PaginatedProductList:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedBase"
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProductListItem"
+
+    PaginatedAdminProductList:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedBase"
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProductDetail"
 
   responses:
     BadRequest:
