@@ -7,7 +7,7 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 - BR-02 Money is stored as `DECIMAL(12,2)`; never floats. One currency system-wide **(assumed)**.
 - BR-02a Products have a regular `price` and an optional `discount_price` (< price). The **effective price** is computed by the backend from `discount_price`, active promotions, and coupons; CMS and storefront only display it.
 - BR-02b Any CMS price/discount edit is validated and audit-logged; it affects future carts/orders only (BR-03).
-- BR-03 Order items snapshot product name, SKU, and unit price at purchase time; later catalog changes never alter existing orders.
+- BR-03 Order items snapshot product name, SKU, unit price, primary image, and shipping information at purchase time; later catalog changes or customer profile edits never alter existing orders ([ADR-0013](architecture/decisions/ADR-0013-checkout-and-orders.md)).
 
 ## Catalog
 - BR-04 Only products with `status = active`, `is_visible = true`, and an active category are visible/purchasable by customers. Draft/archived items are invisible in storefront APIs.
@@ -16,7 +16,7 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 
 ## Inventory
 - BR-07 Stock is validated by the backend at cart update and again at order placement.
-- BR-08 Stock decrement happens inside the order-placement transaction with row locking; overselling is not allowed.
+- BR-08 Stock decrement happens inside the order-placement transaction with row locking (`select_for_update`); overselling is strictly prevented ([ADR-0013](architecture/decisions/ADR-0013-checkout-and-orders.md)).
 
 ## Cart
 - BR-09 A customer has at most one active cart. Cart quantities must be positive integers **(max per line: assumed 20)**.
@@ -29,9 +29,9 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 - BR-10d A product appears at most once per customer's wishlist (duplicate add → `409 conflict`). A wishlist does not reserve stock, lock prices, or create orders.
 
 ## Orders
-- BR-11 Orders are created only by the backend from the server-side cart, never from client-supplied line prices.
-- BR-12 **Order lifecycle (PROPOSED — needs business confirmation, see Open Questions):** `pending → confirmed → processing → shipped → delivered`. Cancellation: `cancelled` from `pending`/`confirmed`/`processing` (stock restored). Returns/refunds (`return_requested`, `returned`, refund tracking on Payment) are **not defined yet** and will be specified in the orders task. Transitions are enforced by one backend service used by both customer (cancel) and CMS (staff) paths; every transition writes `OrderStatusHistory` and an audit entry (when staff-initiated). Invalid transitions → `409 invalid_state_transition`.
-- BR-12a **Payment status is separate** from order status: `pending / paid / failed / refunded / partially_refunded`. Whether `confirmed` requires `paid` (e.g. cash-on-delivery vs. prepaid) is an open question.
+- BR-11 Orders are created only by the backend from the server-side cart, never from client-supplied line prices or quantities. Upon successful order creation, stock is deducted and the customer's cart is atomically cleared inside the same database transaction ([ADR-0013](architecture/decisions/ADR-0013-checkout-and-orders.md)).
+- BR-12 **Order lifecycle:** `pending → confirmed → processing → shipped → delivered`. Cancellation: `cancelled` from `pending`/`confirmed`/`processing` (stock restored). Returns/refunds (`return_requested`, `returned`, refund tracking on Payment) will be specified in later milestones. Initial order creation places orders into `pending`. Transitions are enforced by backend services; every transition writes `OrderStatusHistory`. Invalid transitions → `409 invalid_state_transition`.
+- BR-12a **Payment status is separate** from order status: `pending / paid / failed / refunded`. Initial order creation sets payment status to `pending`.
 - BR-13 Customers can only view their own orders. Internal notes are never visible to customers.
 
 ## Payments

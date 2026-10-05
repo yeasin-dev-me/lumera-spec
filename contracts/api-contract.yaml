@@ -354,6 +354,108 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  # --- Checkout & Orders (ADR-0013, BR-03, BR-08, BR-11, BR-12, BR-12a) ------
+  /customer/checkout/:
+    get:
+      tags: [customer]
+      summary: Retrieve authoritative checkout preview before order placement
+      description: |
+        Returns customer cart items with current authoritative prices, stock eligibility,
+        and required shipping fields. Does NOT reserve inventory or create an order.
+      operationId: getCustomerCheckoutPreview
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Checkout preview details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutPreview"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /customer/orders/:
+    get:
+      tags: [customer]
+      summary: List authenticated customer's orders
+      description: Returns a paginated list of orders placed by the authenticated customer.
+      operationId: listCustomerOrders
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCustomerOrderList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [customer]
+      summary: Place order from current cart (transactional)
+      description: |
+        Validates cart items and stock with row locking (select_for_update), creates the Order,
+        creates OrderItems with purchase-time price and product snapshots, deducts inventory stock,
+        and clears the cart in a single atomic transaction.
+      operationId: createCustomerOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreateRequest"
+      responses:
+        "201":
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Insufficient stock or product unavailable during checkout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /customer/orders/{public_id}/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    get:
+      tags: [customer]
+      summary: Retrieve authenticated customer's order detail
+      description: |
+        Returns order detail with historical snapshots. Customers can only retrieve their own orders.
+      operationId: getCustomerOrderDetail
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Order detail with purchase-time snapshots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /admin/auth/login/:
     post:
       tags: [admin-auth]
@@ -852,6 +954,71 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # --- Admin Orders (ADR-0013, CMS Visibility) -------------------------------
+  /admin/orders/:
+    get:
+      tags: [admin]
+      summary: List all orders for CMS staff
+      description: Operational order listing with status, payment status, customer, and search filters.
+      operationId: listAdminOrders
+      security:
+        - cmsBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, confirmed, processing, shipped, delivered, cancelled] }
+        - name: payment_status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, paid, failed, refunded] }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+          description: Search by order_number or customer email
+      responses:
+        "200":
+          description: Paginated admin order list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAdminOrderList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/orders/{public_id}/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    get:
+      tags: [admin]
+      summary: Retrieve order detail for CMS staff
+      description: Full operational order detail including snapshots, customer info, and status history.
+      operationId: getAdminOrderDetail
+      security:
+        - cmsBearerAuth: []
+      responses:
+        "200":
+          description: Admin order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1274,6 +1441,182 @@ components:
       required: [product_id]
       properties:
         product_id: { type: string, format: uuid, description: Product public_id }
+
+    # --- Checkout & Orders (ADR-0013) -------------------------------------
+    ShippingAddressInput:
+      type: object
+      required: [full_name, phone, address, city]
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 255 }
+        phone: { type: string, minLength: 7, maxLength: 50 }
+        address: { type: string, minLength: 3, maxLength: 255 }
+        city: { type: string, minLength: 2, maxLength: 100 }
+        area: { type: string, maxLength: 100 }
+        postal_code: { type: string, maxLength: 20 }
+        country: { type: string, default: "Bangladesh", maxLength: 100 }
+
+    OrderCreateRequest:
+      type: object
+      required: [shipping_address]
+      properties:
+        shipping_address:
+          $ref: "#/components/schemas/ShippingAddressInput"
+        customer_notes:
+          type: string
+          maxLength: 1000
+
+    CheckoutCustomerSummary:
+      type: object
+      required: [email, full_name]
+      properties:
+        email: { type: string, format: email }
+        full_name: { type: string }
+        phone: { type: string }
+
+    CheckoutPreview:
+      type: object
+      required: [cart, subtotal, shipping_cost, discount_total, total, currency, is_ready_for_checkout, customer]
+      properties:
+        cart:
+          $ref: "#/components/schemas/Cart"
+        subtotal:
+          $ref: "#/components/schemas/Money"
+        shipping_cost:
+          $ref: "#/components/schemas/Money"
+        discount_total:
+          $ref: "#/components/schemas/Money"
+        total:
+          $ref: "#/components/schemas/Money"
+        currency:
+          type: string
+          default: "USD"
+        is_ready_for_checkout:
+          type: boolean
+        customer:
+          $ref: "#/components/schemas/CheckoutCustomerSummary"
+
+    OrderItemDetail:
+      type: object
+      required: [id, product_name, product_sku, unit_price, quantity, line_total]
+      properties:
+        id: { type: integer }
+        product_public_id: { type: string, format: uuid, nullable: true }
+        product_name: { type: string, description: Immutable name snapshot at purchase time }
+        product_sku: { type: string, description: Immutable SKU snapshot at purchase time }
+        product_image: { type: string, nullable: true, description: Immutable primary image URL snapshot }
+        unit_price:
+          $ref: "#/components/schemas/Money"
+        quantity:
+          type: integer
+          minimum: 1
+        line_total:
+          $ref: "#/components/schemas/Money"
+
+    OrderStatusHistoryItem:
+      type: object
+      required: [to_status, created_at]
+      properties:
+        from_status: { type: string }
+        to_status: { type: string }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
+
+    CustomerOrderListItem:
+      type: object
+      required: [public_id, order_number, status, payment_status, item_count, total, currency, created_at]
+      properties:
+        public_id: { type: string, format: uuid }
+        order_number: { type: string }
+        status:
+          type: string
+          enum: [pending, confirmed, processing, shipped, delivered, cancelled]
+        payment_status:
+          type: string
+          enum: [pending, paid, failed, refunded]
+        item_count: { type: integer }
+        total:
+          $ref: "#/components/schemas/Money"
+        currency: { type: string }
+        created_at: { type: string, format: date-time }
+
+    PaginatedCustomerOrderList:
+      type: object
+      required: [count, results]
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerOrderListItem" }
+
+    OrderDetail:
+      type: object
+      required: [public_id, order_number, status, payment_status, subtotal, shipping_cost, discount_total, total, currency, shipping_address, items, created_at]
+      properties:
+        public_id: { type: string, format: uuid }
+        order_number: { type: string }
+        status:
+          type: string
+          enum: [pending, confirmed, processing, shipped, delivered, cancelled]
+        payment_status:
+          type: string
+          enum: [pending, paid, failed, refunded]
+        subtotal:
+          $ref: "#/components/schemas/Money"
+        shipping_cost:
+          $ref: "#/components/schemas/Money"
+        discount_total:
+          $ref: "#/components/schemas/Money"
+        total:
+          $ref: "#/components/schemas/Money"
+        currency: { type: string }
+        shipping_address:
+          $ref: "#/components/schemas/ShippingAddressInput"
+        customer_notes: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItemDetail" }
+        status_history:
+          type: array
+          items: { $ref: "#/components/schemas/OrderStatusHistoryItem" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AdminOrderListItem:
+      allOf:
+        - $ref: "#/components/schemas/CustomerOrderListItem"
+        - type: object
+          required: [customer_email, customer_name]
+          properties:
+            customer_email: { type: string }
+            customer_name: { type: string }
+
+    PaginatedAdminOrderList:
+      type: object
+      required: [count, results]
+      properties:
+        count: { type: integer }
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/AdminOrderListItem" }
+
+    AdminOrderDetail:
+      allOf:
+        - $ref: "#/components/schemas/OrderDetail"
+        - type: object
+          required: [customer]
+          properties:
+            customer:
+              type: object
+              required: [email, full_name]
+              properties:
+                public_id: { type: string, format: uuid }
+                email: { type: string }
+                full_name: { type: string }
+                phone: { type: string }
 
   responses:
     BadRequest:

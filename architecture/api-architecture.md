@@ -26,8 +26,8 @@ Normative conventions for all endpoints. The machine-readable contract is [api-c
 - Resource ids: `/storefront/products/{slug}/`, `/customer/orders/{public_id}/`, `/admin/orders/{public_id}/` (see ADR-0004).
 - Nested only one level to express ownership: `/storefront/products/{slug}/reviews/`.
 - Non-CRUD actions are verbs as sub-resources with POST: `/customer/orders/{id}/cancel/`, `/admin/orders/{id}/status/`.
-- Current-user resources: `/customer/me/`, `/customer/me/addresses/`, `/customer/cart/`, `/customer/wishlist/` (singletons per user). Their lines are addressed by product `public_id`: `/customer/cart/items/{product_id}/` ([ADR-0012](decisions/ADR-0012-cart-and-wishlist.md)).
-- Admin permission per endpoint is documented in the contract (`x-required-permission`, e.g. `orders.update`).
+- Current-user resources: `/customer/me/`, `/customer/me/addresses/`, `/customer/cart/`, `/customer/wishlist/`, `/customer/checkout/` (singletons per user). Their lines are addressed by product `public_id`: `/customer/cart/items/{product_id}/` ([ADR-0012](decisions/ADR-0012-cart-and-wishlist.md)). Orders and order placement: `/customer/orders/` ([ADR-0013](decisions/ADR-0013-checkout-and-orders.md)).
+- Admin permission per endpoint is documented in the contract (`x-required-permission`, e.g. `orders.read`, `orders.update`).
 
 ## Methods
 | Method | Use | Idempotent |
