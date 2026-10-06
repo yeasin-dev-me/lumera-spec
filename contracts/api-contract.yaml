@@ -510,6 +510,77 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /customer/orders/{public_id}/cancel/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    post:
+      tags: [customer]
+      summary: Cancel customer's own unpaid pending order
+      description: |
+        Allows customer to cancel an order only if it is in pending status and unpaid.
+        Restores reserved inventory and records status history.
+      operationId: cancelCustomerOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCancelRequest"
+      responses:
+        "200":
+          description: Order cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /customer/orders/{public_id}/timeline/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    get:
+      tags: [customer]
+      summary: Retrieve order status progression and audit timeline
+      description: |
+        Returns chronological status transitions, timestamps, and actor types for the authenticated customer's order.
+      operationId: getCustomerOrderTimeline
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Order status progression timeline
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderTimelineItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /internal/payments/webhook/{gateway}/:
     parameters:
       - name: gateway
@@ -1107,6 +1178,85 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /admin/orders/{public_id}/transition/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    post:
+      tags: [admin]
+      summary: Transition order lifecycle status
+      description: |
+        Controlled lifecycle mutation for CMS operators.
+        Validates legal state machine transitions, payment prerequisites, and mandatory fulfillment data.
+        Requires orders.manage permission.
+      operationId: transitionAdminOrder
+      security:
+        - cmsBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderTransitionRequest"
+      responses:
+        "200":
+          description: Order status transitioned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /admin/orders/{public_id}/fulfillment/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    patch:
+      tags: [admin]
+      summary: Update order courier and tracking information
+      description: |
+        Updates courier and tracking metadata without mutating order status.
+        Requires orders.manage permission.
+      operationId: updateAdminOrderFulfillment
+      security:
+        - cmsBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FulfillmentUpdateRequest"
+      responses:
+        "200":
+          description: Order fulfillment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1606,6 +1756,9 @@ components:
       properties:
         from_status: { type: string }
         to_status: { type: string }
+        actor_type:
+          type: string
+          enum: [system, staff, customer]
         reason: { type: string }
         created_at: { type: string, format: date-time }
 
@@ -1668,6 +1821,11 @@ components:
         status_history:
           type: array
           items: { $ref: "#/components/schemas/OrderStatusHistoryItem" }
+        courier: { type: string, nullable: true }
+        tracking_number: { type: string, nullable: true }
+        tracking_url: { type: string, nullable: true }
+        shipped_at: { type: string, format: date-time, nullable: true }
+        delivered_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -1778,6 +1936,81 @@ components:
         message: { type: string }
         payment_public_id: { type: string, format: uuid }
         order_number: { type: string }
+
+    OrderTransitionRequest:
+      type: object
+      required: [to_status]
+      properties:
+        to_status:
+          type: string
+          enum: [confirmed, processing, shipped, delivered, cancelled]
+        reason:
+          type: string
+          description: Reason or note for transition
+        courier:
+          type: string
+          description: Courier name (mandatory if to_status is shipped)
+        tracking_number:
+          type: string
+          description: Tracking number (mandatory if to_status is shipped)
+        tracking_url:
+          type: string
+          description: Optional tracking URL
+
+    FulfillmentUpdateRequest:
+      type: object
+      properties:
+        courier:
+          type: string
+        tracking_number:
+          type: string
+        tracking_url:
+          type: string
+
+    OrderCancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+
+    OrderTimelineItem:
+      type: object
+      required: [to_status, created_at]
+      properties:
+        from_status:
+          type: string
+        to_status:
+          type: string
+        actor_type:
+          type: string
+          enum: [system, staff, customer]
+        reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    NotificationSummary:
+      type: object
+      required: [public_id, event_type, channel, recipient, status, created_at]
+      properties:
+        public_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum: [order_placed, payment_confirmed, order_processing, order_shipped, order_delivered, order_cancelled]
+        channel:
+          type: string
+          enum: [email, sms]
+        recipient:
+          type: string
+        status:
+          type: string
+          enum: [pending, sent, failed]
+        created_at:
+          type: string
+          format: date-time
 
   responses:
     BadRequest:

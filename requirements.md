@@ -45,7 +45,10 @@ The custom Next.js CMS ([cms-architecture](architecture/cms-architecture.md)) is
 
 ## Open Questions (need product owner)
 1. Currency: single currency or multi-currency? (Assumed: single, configurable; see business-rules.)
-2. Payment provider/gateways (not selected — see ADR-0005).
+2. Payment provider/gateways: **SSLCommerz is selected for the initial Bangladesh-first deployment by
+   [ADR-0014](architecture/decisions/ADR-0014-payment-architecture-and-gateway.md), superseding
+   [ADR-0005](architecture/decisions/ADR-0005-payment-provider.md).** The backend uses a gateway
+   abstraction so additional providers can be added without changing order logic.
 3. Guest checkout allowed? (Assumed: **no** until decided.)
 4. Shipping: rates, zones, tax handling.
 5. Review policy: verified-purchase only? moderation?

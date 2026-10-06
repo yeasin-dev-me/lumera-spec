@@ -1,6 +1,6 @@
 # TASK-001 — Project Foundation & Architecture
 
-- Status: **Done — pending human approval of Proposed ADRs**
+- Status: **Done**
 - Domains: Spec (all domains read)
 - Type: Documentation only. No application code, dependencies, or infrastructure.
 
@@ -22,9 +22,12 @@
 | 13 | Project docs | `PROJECT.md`, `requirements.md`, `business-rules.md`, `user-stories.md`, `acceptance-criteria.md` |
 
 ## Decisions Requiring Approval
-1. ADR-0003 — JWT (access in memory + rotating HttpOnly refresh cookie), same-origin routing.
+1. ADR-0003 — JWT (access in memory + rotating HttpOnly refresh cookie), same-origin routing. The current
+   vertical-slice implementation still uses client-managed refresh tokens; cookie migration remains a
+   security hardening task.
 2. ADR-0004 — BIGINT PK + `public_id` UUID on sensitive entities.
-3. ADR-0005 — Payment provider (open; blocks payments work).
+3. ADR-0014 — Payment architecture and gateway selection is accepted. SSLCommerz is the initial
+   configurable gateway; the gateway abstraction is live in Step 7.
 4. ADR-0006 — Trunk-based, squash merge.
 5. Open product questions in `requirements.md` (currency, guest checkout, shipping/tax, review policy, email provider).
 

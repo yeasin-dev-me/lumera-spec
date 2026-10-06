@@ -34,14 +34,14 @@ backend/
     ├── cart/
     ├── orders/
     ├── payments/
-    ├── reviews/
-    ├── common/           # base models, pagination, exceptions, permission helpers
-    # Added when their first feature task needs them (pending ADR-0011):
-    ├── audit/            # append-only admin audit log
-    ├── content/          # structured storefront content
-    ├── promotions/       # coupons/discount rules (only when required)
-    ├── integrations/     # integration settings, provider adapters, tracking dispatch
-    └── analytics/        # read-only dashboard selectors
+    ├── reviews/          # [Status: Planned — roadmap slice 9]
+    ├── common/           # [Status: Implemented — foundation and Steps 1–7]
+    # Added when their first feature task needs them:
+    ├── audit/            # [Status: Planned — roadmap slice 9]
+    ├── content/          # [Status: Planned — roadmap slice 3]
+    ├── promotions/       # [Status: Planned — roadmap slice 8]
+    ├── integrations/     # [Status: Planned — roadmap slice 7]
+    └── analytics/        # [Status: Planned — roadmap slice 10]
 ```
 Each app: `models.py`, `serializers.py`, `views.py`, `urls.py`, `permissions.py`, `services.py` (when needed), `selectors.py` (when needed), `tests/`, `migrations/`. No other apps without approval.
 

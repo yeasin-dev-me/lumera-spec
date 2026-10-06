@@ -21,6 +21,7 @@ Agents must not implement a decision whose ADR is still **Proposed** without hum
 | [0012](ADR-0012-cart-and-wishlist.md) | Customer cart & wishlist: dynamic pricing, stock validation, ownership, identifiers | **Proposed** (implemented in Step 5) |
 | [0013](ADR-0013-checkout-and-orders.md) | Checkout, Orders, Price Snapshots, and Transactional Inventory Deduction | Accepted (Step 6) |
 | [0014](ADR-0014-payment-architecture-and-gateway.md) | Payment Architecture, Gateway Abstraction, and Server-Side Verification | Accepted (Step 7) |
+| [0015](ADR-0015-order-lifecycle-fulfillment-notifications.md) | Order Lifecycle, Fulfillment, and Customer Notifications | Accepted (Step 8) |
 
 ## Template
 ```markdown

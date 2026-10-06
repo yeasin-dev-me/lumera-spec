@@ -14,8 +14,8 @@ The CMS is a Next.js interface, but its **data and authority come from the Backe
 |---|---|---|
 | **Frontend (Storefront)** | Customer UI/UX, routing, components, client state, API consumption, forms, SEO, accessibility, responsive behavior, storefront tracking module | Business rules, price/total/stock calc, authorization, persistence, any admin functionality |
 | **CMS** | Admin/operator UI: dashboards, management screens, forms/tables, permission-aware UI | Business rules, authoritative pricing, authorization decisions, DB access, secrets, provider calls |
-| **Backend** | Business logic, database, authentication, authorization (RBAC), validation, API (all namespaces), order calculations, inventory, payment verification, audit log, integration/tracking dispatch, secret storage | Presentation |
-| **Integration** | FE/CMS ↔ BE compatibility, E2E workflows, contract validation (all namespaces), cross-system tests, mismatch detection | Feature implementation (reports mismatches to owners) |
+| **Backend** | Business logic, database, authentication, authorization (RBAC), validation, API (all namespaces), order calculations, inventory, payment verification, secret storage. **Implemented through Step 7:** core commerce, RBAC, checkout/orders, and payments. **Planned:** audit log and integration/tracking dispatch. | Presentation |
+| **Integration** | FE/CMS ↔ BE compatibility, E2E workflows, contract validation (all namespaces), cross-system tests, mismatch detection. **Implemented through Step 7:** core commerce and payment vertical-slice coverage. | Feature implementation (reports mismatches to owners) |
 | **DevOps** | Docker, CI/CD, environments, deployment of storefront/CMS/backend, VPS/cloud, Nginx, SSL, secrets/config, monitoring, backups, rollback | Application code |
 
 ## External Systems (outside Lumera, accessed **only by the backend**)
