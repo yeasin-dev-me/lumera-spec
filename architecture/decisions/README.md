@@ -11,7 +11,7 @@ Agents must not implement a decision whose ADR is still **Proposed** without hum
 | [0002](ADR-0002-modular-monolith.md) | Modular monolith backend | Accepted (from project brief) |
 | [0003](ADR-0003-auth-token-strategy.md) | Authentication tokens & API routing | **Proposed** |
 | [0004](ADR-0004-primary-keys.md) | Primary key & public identifier strategy | **Proposed** |
-| [0005](ADR-0005-payment-provider.md) | Payment provider | **Proposed / Open** |
+| [0005](ADR-0005-payment-provider.md) | Payment provider | **Superseded by ADR-0014** |
 | [0006](ADR-0006-merge-and-branching.md) | Git workflow: trunk-based, squash merge | **Proposed** |
 | [0007](ADR-0007-cms-application.md) | CMS as a separate Next.js application/repository | **Proposed** (custom Next.js CMS / no Django Admin: Accepted by amendment) |
 | [0008](ADR-0008-api-namespaces.md) | API namespaces (`storefront`, `auth`, `customer`, `admin`, `internal`) | **Proposed** |
@@ -20,6 +20,7 @@ Agents must not implement a decision whose ADR is still **Proposed** without hum
 | [0011](ADR-0011-backend-app-additions.md) | Backend app additions (`audit, content, promotions, integrations, analytics`) | **Proposed** |
 | [0012](ADR-0012-cart-and-wishlist.md) | Customer cart & wishlist: dynamic pricing, stock validation, ownership, identifiers | **Proposed** (implemented in Step 5) |
 | [0013](ADR-0013-checkout-and-orders.md) | Checkout, Orders, Price Snapshots, and Transactional Inventory Deduction | Accepted (Step 6) |
+| [0014](ADR-0014-payment-architecture-and-gateway.md) | Payment Architecture, Gateway Abstraction, and Server-Side Verification | Accepted (Step 7) |
 
 ## Template
 ```markdown

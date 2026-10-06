@@ -1,6 +1,6 @@
 # ADR-0005: Payment provider
-- Status: **Proposed / Open — product owner input required**
-- Date: 2026-10-04
+- Status: **Superseded by [ADR-0014](ADR-0014-payment-architecture-and-gateway.md)**
+- Date: 2026-10-04 (Superseded: 2026-10-06)
 
 ## Context
 Payments are in scope but no provider/gateway is named. Provider availability depends on the business's country and currency, which are also unspecified.

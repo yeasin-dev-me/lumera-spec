@@ -456,6 +456,94 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /customer/orders/{public_id}/payment/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: Order public_id (UUID)
+    post:
+      tags: [customer]
+      summary: Initiate payment session for an order
+      description: |
+        Derives amount authoritatively from order total. Order must belong to authenticated customer and be payable.
+      operationId: initiateOrderPayment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInitiateRequest"
+      responses:
+        "201":
+          description: Payment session initiated; gateway redirect returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentInitiateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [customer]
+      summary: Retrieve authoritative payment status for an order
+      description: |
+        Retrieves current payment status, provider transaction ID, and attempt history.
+      operationId: getOrderPaymentStatus
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Authoritative payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /internal/payments/webhook/{gateway}/:
+    parameters:
+      - name: gateway
+        in: path
+        required: true
+        schema: { type: string }
+        description: Payment gateway identifier (e.g. sslcommerz)
+    post:
+      tags: [internal]
+      summary: Gateway webhook / IPN callback handler with server-side verification
+      description: |
+        Receives gateway callback, verifies authenticity via server-to-server gateway query,
+        and idempotently updates payment and order state.
+      operationId: processPaymentWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        "200":
+          description: Callback verified and processed (or idempotent duplicate)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /admin/auth/login/:
     post:
       tags: [admin-auth]
@@ -1617,6 +1705,79 @@ components:
                 email: { type: string }
                 full_name: { type: string }
                 phone: { type: string }
+            payment:
+              $ref: "#/components/schemas/PaymentStatusResponse"
+
+    PaymentInitiateRequest:
+      type: object
+      properties:
+        gateway:
+          type: string
+          default: "sslcommerz"
+        return_url:
+          type: string
+
+    PaymentInitiateResponse:
+      type: object
+      required: [payment_public_id, order_public_id, order_number, gateway, amount, currency, status, redirect_url]
+      properties:
+        payment_public_id: { type: string, format: uuid }
+        order_public_id: { type: string, format: uuid }
+        order_number: { type: string }
+        gateway: { type: string }
+        amount: { $ref: "#/components/schemas/Money" }
+        currency: { type: string }
+        status:
+          type: string
+          enum: [initiated, processing, paid, failed, cancelled]
+        redirect_url: { type: string }
+        provider_reference: { type: string }
+
+    PaymentAttemptDetail:
+      type: object
+      required: [public_id, attempt_number, gateway, status, amount, currency, created_at]
+      properties:
+        public_id: { type: string, format: uuid }
+        attempt_number: { type: integer }
+        gateway: { type: string }
+        status: { type: string }
+        amount: { $ref: "#/components/schemas/Money" }
+        currency: { type: string }
+        provider_reference: { type: string }
+        provider_transaction_id: { type: string }
+        error_message: { type: string }
+        created_at: { type: string, format: date-time }
+
+    PaymentStatusResponse:
+      type: object
+      required: [order_public_id, order_number, status, amount, currency, gateway]
+      properties:
+        payment_public_id: { type: string, format: uuid, nullable: true }
+        order_public_id: { type: string, format: uuid }
+        order_number: { type: string }
+        status:
+          type: string
+          enum: [pending, initiated, processing, paid, failed, cancelled, refunded]
+        amount: { $ref: "#/components/schemas/Money" }
+        currency: { type: string }
+        gateway: { type: string }
+        method: { type: string }
+        provider_transaction_id: { type: string }
+        paid_at: { type: string, format: date-time, nullable: true }
+        attempts:
+          type: array
+          items: { $ref: "#/components/schemas/PaymentAttemptDetail" }
+
+    PaymentWebhookResponse:
+      type: object
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [paid, already_paid, failed, rejected]
+        message: { type: string }
+        payment_public_id: { type: string, format: uuid }
+        order_number: { type: string }
 
   responses:
     BadRequest:
