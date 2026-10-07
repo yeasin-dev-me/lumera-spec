@@ -26,7 +26,9 @@ Each slice = Backend API (+ permissions, audit) → Storefront UI → CMS manage
 | 7 | **Integrations & Tracking** (ADR-0010) — **Planned** | `integrations` app, settings API, tracking service, Meta CAPI/GA4 adapters as required | `lib/tracking` providers from public config, consent | Integrations & tracking configuration UI | Event dedup/purchase event tests |
 | 8 | **Promotions** (if required) — **Planned** | `promotions`, effective price calc | Discount display, coupon entry | Promotions module | Price recalculation tests |
 | 9 | **Reviews** — **Planned** | Review APIs, moderation | Review display/create | Moderation queue | Review flow E2E |
-| 10 | **Dashboard & Analytics** (Step 9 foundation) | Backend-authoritative operational report aggregation, returns/refund metrics | — | Reporting dashboard and return/refund operations | Metrics consistency and authorization tests |
+| 9 | **Reviews** — **Planned** | Review APIs, moderation | Review display/create | Moderation queue | Review flow E2E |
+| 10 | **Dashboard & Analytics** (Step 9 completed, [ADR-0016](../architecture/decisions/ADR-0016-customer-returns-refunds-reporting.md)) | Backend-authoritative operational report aggregation ✅, returns/refund metrics ✅ | Profile & saved address management ✅, return requests ✅ | Reporting dashboard ✅, return/refund operations ✅ | Metrics consistency and authorization tests ✅ |
+| 10b | **Content, SEO & Marketing** (Step 10, [ADR-0017](../architecture/decisions/ADR-0017-content-seo-marketing.md)) | `content` app, dynamic publication scheduling, public/admin content & campaign APIs, safe tracking config | Dynamic metadata, canonical URLs, robots.txt, dynamic sitemap, structured JSON-LD, decoupled tracking | Content list/create/edit/publish/archive, preview, permission guards (`content.read`, `content.manage`) | Publication lifecycle, dynamic window, permission matrix, boundary tests |
 | 11 | **Production readiness** | Hardening | Perf/SEO | CMS hardening | Smoke, rollback drills; DevOps staging/prod (CMS host, Cloudflare Access) |
 
 Slices 2–5 are the minimum to sell a product; CMS parts of each ship in the same slice.

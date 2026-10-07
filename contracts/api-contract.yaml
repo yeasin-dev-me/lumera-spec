@@ -896,6 +896,71 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /storefront/config/:
+    get:
+      tags: [storefront]
+      summary: Public safe configuration and tracking metadata
+      operationId: getStorefrontConfig
+      security: []
+      responses:
+        "200":
+          description: Safe public storefront configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorefrontConfig"
+
+  /storefront/content/home/:
+    get:
+      tags: [storefront]
+      summary: Retrieve active homepage content blocks
+      operationId: getStorefrontHomeContent
+      security: []
+      responses:
+        "200":
+          description: Active homepage hero, announcement, banners, and sections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorefrontHomeContent"
+
+  /storefront/content/banners/:
+    get:
+      tags: [storefront]
+      summary: List active promotional banners and announcements
+      operationId: getStorefrontBanners
+      security: []
+      responses:
+        "200":
+          description: Active promotional banners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentBlock"
+
+  /storefront/content/{slug}/:
+    get:
+      tags: [storefront]
+      summary: Retrieve an active content block by slug
+      operationId: getStorefrontContentBySlug
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Active content block detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /admin/categories/:
     get:
       tags: [admin]
@@ -1502,6 +1567,319 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminOrderDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/content/:
+    get:
+      tags: [admin]
+      summary: List all content blocks for CMS management
+      operationId: listAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.read
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, scheduled, published, archived] }
+        - name: content_type
+          in: query
+          schema: { type: string, enum: [hero, banner, announcement, promotional_section, content_section] }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of content blocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentBlock"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [admin]
+      summary: Create a new content block
+      operationId: createAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentBlockInput"
+      responses:
+        "201":
+          description: Content block created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/content/{public_id}/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [admin]
+      summary: Retrieve content block details
+      operationId: getAdminContentDetail
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.read
+      responses:
+        "200":
+          description: Content block detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [admin]
+      summary: Update a content block
+      operationId: updateAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentBlockInput"
+      responses:
+        "200":
+          description: Content block updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [admin]
+      summary: Delete or archive a content block
+      operationId: deleteAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      responses:
+        "204":
+          description: Content block deleted or archived
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/content/{public_id}/publish/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [admin]
+      summary: Publish a content block
+      operationId: publishAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      responses:
+        "200":
+          description: Content block published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/content/{public_id}/unpublish/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [admin]
+      summary: Unpublish a content block to draft
+      operationId: unpublishAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      responses:
+        "200":
+          description: Content block reverted to draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/content/{public_id}/archive/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [admin]
+      summary: Archive a content block
+      operationId: archiveAdminContent
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      responses:
+        "200":
+          description: Content block archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBlock"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/campaigns/:
+    get:
+      tags: [admin]
+      summary: List promotional campaigns
+      operationId: listAdminCampaigns
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.read
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [admin]
+      summary: Create a promotional campaign
+      operationId: createAdminCampaign
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/campaigns/{public_id}/:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [admin]
+      summary: Retrieve campaign details
+      operationId: getAdminCampaignDetail
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.read
+      responses:
+        "200":
+          description: Campaign detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [admin]
+      summary: Update a campaign
+      operationId: updateAdminCampaign
+      security:
+        - cmsBearerAuth: []
+      x-required-permission: content.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "200":
+          description: Campaign updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2394,6 +2772,111 @@ components:
         created_at:
           type: string
           format: date-time
+
+    StorefrontConfig:
+      type: object
+      required: [site_name, currency, version]
+      properties:
+        site_name: { type: string }
+        currency: { type: string }
+        version: { type: string }
+        announcement_text: { type: string }
+        meta_pixel_id: { type: string }
+        ga4_measurement_id: { type: string }
+        default_seo_title: { type: string }
+        default_seo_description: { type: string }
+
+    ContentBlock:
+      type: object
+      required: [public_id, title, slug, content_type, body, status, sort_order, created_at, updated_at]
+      properties:
+        public_id: { type: string, format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        content_type:
+          type: string
+          enum: [hero, banner, announcement, promotional_section, content_section]
+        body: { type: string }
+        image_url: { type: string }
+        alt_text: { type: string }
+        cta_label: { type: string }
+        cta_url: { type: string }
+        linked_product_id: { type: string, format: uuid, nullable: true }
+        linked_category_slug: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        start_at: { type: string, format: date-time, nullable: true }
+        end_at: { type: string, format: date-time, nullable: true }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ContentBlockInput:
+      type: object
+      required: [title, slug, content_type]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 255 }
+        slug: { type: string, minLength: 1, maxLength: 255 }
+        content_type:
+          type: string
+          enum: [hero, banner, announcement, promotional_section, content_section]
+        body: { type: string }
+        image_url: { type: string, maxLength: 500 }
+        alt_text: { type: string, maxLength: 255 }
+        cta_label: { type: string, maxLength: 100 }
+        cta_url: { type: string, maxLength: 500 }
+        linked_product_id: { type: string, format: uuid, nullable: true }
+        linked_category_slug: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        start_at: { type: string, format: date-time, nullable: true }
+        end_at: { type: string, format: date-time, nullable: true }
+        sort_order: { type: integer }
+
+    StorefrontHomeContent:
+      type: object
+      properties:
+        hero: { $ref: "#/components/schemas/ContentBlock", nullable: true }
+        announcement: { $ref: "#/components/schemas/ContentBlock", nullable: true }
+        banners:
+          type: array
+          items: { $ref: "#/components/schemas/ContentBlock" }
+        sections:
+          type: array
+          items: { $ref: "#/components/schemas/ContentBlock" }
+
+    Campaign:
+      type: object
+      required: [public_id, name, slug, status, created_at, updated_at]
+      properties:
+        public_id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        badge_text: { type: string }
+        status:
+          type: string
+          enum: [draft, active, archived]
+        start_at: { type: string, format: date-time, nullable: true }
+        end_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CampaignInput:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        slug: { type: string, minLength: 1, maxLength: 255 }
+        description: { type: string }
+        badge_text: { type: string, maxLength: 100 }
+        status:
+          type: string
+          enum: [draft, active, archived]
+        start_at: { type: string, format: date-time, nullable: true }
+        end_at: { type: string, format: date-time, nullable: true }
 
   responses:
     BadRequest:

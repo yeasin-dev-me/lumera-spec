@@ -55,9 +55,13 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 - BR-22 Stock edits via CMS are explicit adjustments (`inventory.update`), validated (≥ 0), and audit-logged with before/after.
 - BR-23 Admin-visible customer data follows least privilege: `customers.read` shows name/email/phone/status/order summary; no passwords/tokens/payment instruments. Individual carts are not visible to the CMS; only aggregate demand indicators.
 - BR-24 Content blocks follow `draft → published` with optional schedule; storefront shows only published, in-window content. Content cannot embed scripts.
+- BR-24a Editorial content, banners, and promotional campaigns cannot alter product pricing, inventory stock, order calculations, or financial settlement states. Commercial rules remain backend-authoritative.
+- BR-24b Content publication scheduling (`draft`, `scheduled`, `published`, `archived`) is dynamically evaluated server-side; draft, scheduled-future, expired, and archived content blocks are strictly excluded from public storefront APIs.
+- BR-24c Next.js dynamic SEO metadata, canonical URLs, and structured JSON-LD schemas derive exclusively from authoritative backend models; private routes, carts, checkouts, and unpublished entities are strictly excluded from indexing and sitemaps.
 - BR-25 Coupons/discount rules (when introduced) have validity windows and usage limits enforced at order placement, atomically.
 - BR-26 Integration secrets are write-only and never returned or logged; public configuration is a whitelist (ADR-0010). Changes to integration/payment/tracking configuration require `integrations.manage` and are audited.
 - BR-27 Tracking: **purchase** events are sent by the backend from verified order data; client-sent tracking events are non-authoritative and never alter business state. Tracking failures never block orders.
 - BR-28 Audited actions: price/discount, stock, product publish/archive, order status/notes, refunds, integration/tracking config, role/permission changes, reveal of masked data. Audit entries are append-only.
 - BR-29 Dashboard metrics are computed by the backend. Gross revenue uses authoritative paid payment completion data; externally settled refunds are reported separately and only those reduce net revenue. Internal refund foundations are operational records, not settlement.
 - BR-30 Reporting is protected by `reports.read`. Order, payment, return, refund, shipment, and delivery metrics use their documented source timestamps and inclusive-start/exclusive-end date ranges.
+
