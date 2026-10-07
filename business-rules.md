@@ -30,13 +30,16 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 
 ## Orders
 - BR-11 Orders are created only by the backend from the server-side cart, never from client-supplied line prices or quantities. Upon successful order creation, stock is deducted and the customer's cart is atomically cleared inside the same database transaction ([ADR-0013](architecture/decisions/ADR-0013-checkout-and-orders.md)).
-- BR-12 **Order lifecycle:** `pending → confirmed → processing → shipped → delivered`. Cancellation: `cancelled` from `pending`/`confirmed`/`processing` (stock restored). Returns/refunds (`return_requested`, `returned`, refund tracking on Payment) will be specified in later milestones. Initial order creation places orders into `pending`. Transitions are enforced by backend services; every transition writes `OrderStatusHistory`. Invalid transitions → `409 invalid_state_transition`.
+- BR-12 **Order lifecycle:** `pending → confirmed → processing → shipped → delivered`. Cancellation: `cancelled` from `pending`/`confirmed`/`processing` (stock restored). Returns are separate delivered-order records and never mutate the order lifecycle. Initial order creation places orders into `pending`. Transitions are enforced by backend services; every transition writes `OrderStatusHistory`. Invalid transitions → `409 invalid_state_transition`.
 - BR-12a **Payment status is separate** from order status: `pending / paid / failed / refunded`. Initial order creation sets payment status to `pending`.
 - BR-13 Customers can only view their own orders. Internal notes are never visible to customers.
+- BR-13a Saved addresses are customer-owned mutable convenience records. Order shipping fields are copied at order creation and are immutable historical snapshots.
+- BR-13b Only delivered orders are eligible for returns. Requested quantities cannot exceed the remaining eligible quantity across active return requests.
 
 ## Payments
 - BR-14 A payment becomes `paid` (and the order's payment status with it) only after **server-side verification** with the payment provider (webhook or server-to-server check). Client "success" redirects, and CMS users, cannot mark a provider payment as paid. Manual payment recording (e.g. offline methods) is only via an explicit permissioned, audited admin action, if the business requires it.
 - BR-15 Payment processing is idempotent; duplicate webhooks must not double-apply.
+- BR-15a Refund foundations reference an authoritative paid payment. Amounts are positive and cannot exceed the remaining refundable amount under concurrent requests. Internal refund records do not mean gateway settlement and do not set payment status to refunded.
 
 ## Reviews
 - BR-16 One review per customer per product. Rating is an integer 1–5.
@@ -56,4 +59,5 @@ Rules marked **(assumed)** are placeholders pending product-owner confirmation (
 - BR-26 Integration secrets are write-only and never returned or logged; public configuration is a whitelist (ADR-0010). Changes to integration/payment/tracking configuration require `integrations.manage` and are audited.
 - BR-27 Tracking: **purchase** events are sent by the backend from verified order data; client-sent tracking events are non-authoritative and never alter business state. Tracking failures never block orders.
 - BR-28 Audited actions: price/discount, stock, product publish/archive, order status/notes, refunds, integration/tracking config, role/permission changes, reveal of masked data. Audit entries are append-only.
-- BR-29 Dashboard metrics are computed by the backend. Metric definitions (e.g. "revenue" = sum of `total` of orders with payment `paid`, excluding cancelled/refunded) must be confirmed by the business before implementation.
+- BR-29 Dashboard metrics are computed by the backend. Gross revenue uses authoritative paid payment completion data; externally settled refunds are reported separately and only those reduce net revenue. Internal refund foundations are operational records, not settlement.
+- BR-30 Reporting is protected by `reports.read`. Order, payment, return, refund, shipment, and delivery metrics use their documented source timestamps and inclusive-start/exclusive-end date ranges.

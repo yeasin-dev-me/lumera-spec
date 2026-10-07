@@ -26,7 +26,7 @@ Each slice = Backend API (+ permissions, audit) → Storefront UI → CMS manage
 | 7 | **Integrations & Tracking** (ADR-0010) — **Planned** | `integrations` app, settings API, tracking service, Meta CAPI/GA4 adapters as required | `lib/tracking` providers from public config, consent | Integrations & tracking configuration UI | Event dedup/purchase event tests |
 | 8 | **Promotions** (if required) — **Planned** | `promotions`, effective price calc | Discount display, coupon entry | Promotions module | Price recalculation tests |
 | 9 | **Reviews** — **Planned** | Review APIs, moderation | Review display/create | Moderation queue | Review flow E2E |
-| 10 | **Dashboard & Analytics** — **Planned** | `analytics` selectors (definitions confirmed) | — | Dashboard & analytics screens | Metrics consistency tests |
+| 10 | **Dashboard & Analytics** (Step 9 foundation) | Backend-authoritative operational report aggregation, returns/refund metrics | — | Reporting dashboard and return/refund operations | Metrics consistency and authorization tests |
 | 11 | **Production readiness** | Hardening | Perf/SEO | CMS hardening | Smoke, rollback drills; DevOps staging/prod (CMS host, Cloudflare Access) |
 
 Slices 2–5 are the minimum to sell a product; CMS parts of each ship in the same slice.
