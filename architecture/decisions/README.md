@@ -24,6 +24,7 @@ Agents must not implement a decision whose ADR is still **Proposed** without hum
 | [0015](ADR-0015-order-lifecycle-fulfillment-notifications.md) | Order Lifecycle, Fulfillment, and Customer Notifications | Accepted (Step 8) |
 | [0016](ADR-0016-customer-returns-refunds-reporting.md) | Customer Profiles, Returns, Refund Foundations, and Operational Reporting | Accepted (Step 9) |
 | [0017](ADR-0017-content-seo-marketing.md) | Content, SEO, and Marketing Architecture | Accepted (Step 10) |
+| [0018](ADR-0018-customer-communication-notification-architecture.md) | Customer Communication & Notification Architecture | Accepted (Step 11) |
 
 ## Template
 ```markdown
