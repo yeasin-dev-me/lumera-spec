@@ -1,9 +1,9 @@
-# Lumera — PROJECT.md
+# Penguin Mart (formerly Lumera) — PROJECT.md
 
 Single entry point for humans and AI agents. `lumera-spec` is the **Single Source of Truth**; if code and spec disagree, raise it — don't silently pick one.
 
 ## Product
-Lumera is a modern skincare and beauty e-commerce platform: storefront, customer accounts, catalog, categories, cart, checkout, orders, payments, reviews, and a **custom CMS / operations system** for the business.
+**Penguin Mart** (Skin Care & Beauty) is a modern skincare and beauty e-commerce platform: storefront, customer accounts, catalog, categories, cart, checkout, orders, payments, reviews, and a **custom CMS / operations system** for the business.
 
 ## Stack (fixed — changes need explicit approval)
 | Layer | Technology |
