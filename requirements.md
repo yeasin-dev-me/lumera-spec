@@ -8,7 +8,7 @@ High-level scope only. Detailed requirements are added per task; nothing here is
 | FR-AUTH | Customer authentication | Register, login, logout, session refresh |
 | FR-CAT | Catalog & categories | Browse/search/filter/sort products by category |
 | FR-CART | Cart | Add/update/remove items; persists for logged-in customers |
-| FR-CHK | Checkout | Address selection, order review, order placement |
+| FR-CHK | Checkout & Order Confirmation | Recipient details input, order review, optional customer login (guest checkout permitted), instant order confirmation form |
 | FR-ORD | Orders | Order history and details for customers; management by staff |
 | FR-PAY | Payments | Pay for an order; server-side payment verification |
 | FR-REV | Reviews | Customers review purchased products |
@@ -49,7 +49,7 @@ The custom Next.js CMS ([cms-architecture](architecture/cms-architecture.md)) is
    [ADR-0014](architecture/decisions/ADR-0014-payment-architecture-and-gateway.md), superseding
    [ADR-0005](architecture/decisions/ADR-0005-payment-provider.md).** The backend uses a gateway
    abstraction so additional providers can be added without changing order logic.
-3. Guest checkout allowed? (Assumed: **no** until decided.)
+3. Guest checkout allowed? **YES (Decided).** Any customer can place and confirm an order without creating or logging into an account. Login is optional and not mandatory. An order confirmation form allows guests to provide contact details (name, phone, delivery address) and place orders directly. Authenticated customers have their details auto-filled and orders saved to their account history.
 4. Shipping: rates, zones, tax handling.
 5. Review policy: verified-purchase only? moderation?
 6. Email provider for transactional mail.

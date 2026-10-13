@@ -22,6 +22,8 @@ Given / When / Then, tied to a user story. Detailed criteria are authored in eac
 
 **US-07 Checkout** — Given a cart, when the client submits an order with a `price` field in the payload, then the field is ignored and order totals equal the server-calculated values.
 
+**US-07a Guest Order Confirmation** — Given an unauthenticated visitor, when they submit the order confirmation form with valid recipient details (full name, phone, address), then the order is created with `status = "pending"`, stock is deducted, and an order confirmation is returned without requiring authentication or account creation. If an authenticated customer submits the form, the order is linked to their account history.
+
 **US-08 Payment** — Given an order, when the client claims payment success but the provider has not confirmed, then the payment status remains `pending`/unpaid.
 
 **US-11 CMS price edit** — Given an operator with `products.write`, when they set `discount_price` ≥ `price`, then the API returns `400 validation_error`; when valid, the change is saved, audit-logged, and existing orders keep their snapshot prices. An operator without the permission receives `403` even by calling the API directly.

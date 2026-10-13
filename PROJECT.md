@@ -43,6 +43,7 @@ Storefront, CMS, and backend are independent, independently deployable applicati
 14. **The CMS is a first-class system:** it never accesses the database, never holds secrets, never bypasses backend permissions, and never duplicates critical business logic. Authorization is enforced by the backend (permission-based RBAC); Django Admin is not used.
 15. Features are delivered as vertical slices (backend + storefront + CMS + integration tests); CMS work is not deferred to the end.
 16. Secrets never reach browsers; third-party/provider integrations (payments, tracking, …) are centralized and server-side where they carry secrets.
+17. **Guest Order Confirmation:** Customer account creation/login is optional and never mandatory for placing an order. Any customer can confirm and place orders directly through the order confirmation form as a guest. Authenticated customers benefit from saved addresses and auto-filled details.
 
 ## Document Map
 | Topic | Document |
